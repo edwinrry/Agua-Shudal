@@ -941,25 +941,33 @@
 
         const mensajeTexto = `Hola ${datos.nombreUsuario}, le adjuntamos su recibo oficial de agua en formato PDF. Total a pagar: S/ ${(datos.totalPagar || 0).toFixed(2)}`;
 
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    files: [file],
-                    title: 'Recibo de Agua Shudal',
-                    text: mensajeTexto
-                });
-            } catch (error) {
-                if (error.name !== 'AbortError') {
-                    console.error("Error al compartir archivo:", error);
-                    alert("No se pudo enviar el archivo directamente.");
+        let telefonoLimpio = (datos.telefono || "").replace(/\D/g, "");
+
+        if (telefonoLimpio.length > 0) {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Recibo de Agua Shudal',
+                        text: mensajeTexto
+                    });
+                    return;
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error("Error al compartir archivo:", error);
+                    }
                 }
-            }
+            } 
+            
+            doc.save(fileName);
+            alert(`📄 El PDF se ha descargado.\n\nSe abrirá WhatsApp directamente con el número ${telefonoLimpio} para que envíes el mensaje y adjuntes el archivo.`);
+
+            const url = `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(mensajeTexto)}`;
+            window.open(url, '_blank');
+
         } else {
             doc.save(fileName);
-            alert("📄 El PDF del recibo se ha descargado en tu equipo.\n\nA continuación se abrirá WhatsApp para que adjuntes el archivo descargado.");
-
-            const url = `https://wa.me/${datos.telefono}?text=${encodeURIComponent(mensajeTexto)}`;
-            window.open(url, '_blank');
+            alert("⚠️ Este usuario no tiene un número de WhatsApp registrado. El PDF se descargó, pero deberás enviarlo manualmente.");
         }
     }
 </script>
