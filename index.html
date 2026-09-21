@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agua Shudal - Lecturas y Recibos</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Librerías jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- Configuración PWA para Celular -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <style>
+        body { padding: 15px; background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { margin-bottom: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.08); border-radius: 12px; border: none; }
+        .btn-custom { border-radius: 8px; font-weight: 600; }
+        .section-title { font-size: 0.95rem; font-weight: 700; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; }
+        .table-responsive { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+<div class="container" style="max-width: 650px;">
+    
+    <!-- PANTALLA DE LOGIN -->
+    <div id="pantallaLogin" class="card p-4 my-5 border-primary">
+        <h3 class="text-center mb-3 text-primary fw-bold">💧 Agua Shudal</h3>
+        <h5 class="text-center text-secondary mb-4">Iniciar Sesión</h5>
+        <form id="formLogin">
+            <div class="mb-3">
+                <label class="form-label">Usuario</label>
+                <input type="text" class="form-control" id="loginUsuario" required placeholder="Ej: Admin">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Contraseña</label>
+                <input type="password" class="form-control" id="loginPassword" required placeholder="••••">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 btn-lg btn-custom">Ingresar</button>
+        </form>
+    </div>
+
+    <!-- APP PRINCIPAL -->
+    <div id="pantallaPrincipal" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="text-primary fw-bold mb-0">💧 Agua Shudal</h3>
+            <div>
+                <button class="btn btn-outline-secondary btn-sm me-1" onclick="abrirModalClave()">🔑 Clave</button>
+                <button class="btn btn-outline-danger btn-sm" onclick="cerrarSesion()">Cerrar Sesión</button>
+            </div>
+        </div>
+
+        <!-- Registrar Nuevo Usuario -->
+        <button class="btn btn-outline-primary w-100 mb-3 btn-custom" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNuevoUsuario">
+            ➕ Registrar Nuevo Usuario
+        </button>
+
+        <div class="collapse mb-3" id="collapseNuevoUsuario">
+            <div class="card card-body border-primary">
+                <h5 class="text-primary mb-3">Datos del Nuevo Usuario</h5>
+                <form id="formNuevoUsuario">
+                    <div class="mb-2">
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" class="form-control" id="nuevoNombre" required placeholder="Ej: Juan Pérez">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Dirección / Sector</label>
+                        <input type="text" class="form-control" id="nuevaDireccion" placeholder="Ej: Av. Central #123">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Teléfono WhatsApp</label>
+                        <input type="tel" class="form-control" id="nuevoTelefono" placeholder="Ej: 51987654321">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">N° Medidor</label>
+                            <input type="text" class="form-control" id="nuevoMedidor" placeholder="Ej: MED-001">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Lectura Inicial (m³) *</label>
+                            <input type="number" step="any" class="form-control" id="nuevaLecturaInicial" value="0" required placeholder="Ej: 145.5">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 btn-custom">Guardar Usuario y Lectura Inicial</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 1. Selección y Edición de Usuario -->
+        <div class="card p-3">
+            <h6 class="section-title mb-2">1. Seleccionar Usuario</h6>
+            <div class="mb-2">
+                <select id="selectUsuario" class="form-select form-select-lg" onchange="cargarDatosUsuario()">
+                    <option value="">-- Cargar usuarios... --</option>
+                </select>
+            </div>
+            <div id="infoUsuario" class="d-none bg-light p-3 rounded mt-2 border">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="mb-1"><strong>Cliente:</strong> <span id="lblNombre"></span></p>
+                        <p class="mb-1"><strong>Dirección:</strong> <span id="lblDireccion"></span></p>
+                        <p class="mb-1"><strong>WhatsApp:</strong> <span id="lblTelefono"></span></p>
+                        <p class="mb-0"><strong>Medidor:</strong> <span id="lblMedidor"></span></p>
+                    </div>
+                    <button class="btn btn-warning btn-sm btn-custom" onclick="abrirModalEditarUsuario()">✏️ Editar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Registro de Lectura Mensual -->
+        <div class="card p-3">
+            <h6 class="section-title mb-2">2. Toma de Lectura Mensual</h6>
+            <form id="formLectura">
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label for="lecturaAnterior" class="form-label">Lectura Anterior (m³)</label>
+                        <input type="number" step="any" class="form-control bg-light" id="lecturaAnterior" value="0" readonly>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label for="lecturaActual" class="form-label">Lectura Actual (m³)</label>
+                        <input type="number" step="any" class="form-control" id="lecturaActual" placeholder="Ingrese lectura" required oninput="calcularConsumo()">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label for="consumoTotal" class="form-label">Consumo (m³)</label>
+                        <input type="number" class="form-control bg-light" id="consumoTotal" readonly>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label for="precioMetro" class="form-label">Tarifa por m³ (S/)</label>
+                        <input type="number" step="any" class="form-control" id="precioMetro" value="3.00" required oninput="calcularConsumo()">
+                    </div>
+                </div>
+
+                <hr class="my-2">
+                <p class="fw-bold text-secondary mb-2" style="font-size: 0.9rem;">Cargos Adicionales (S/):</p>
+
+                <div class="row">
+                    <div class="col-4 mb-3">
+                        <label for="mantenimiento" class="form-label" style="font-size: 0.85rem;">Mantenimiento</label>
+                        <input type="number" step="any" class="form-control" id="mantenimiento" value="0" oninput="calcularTotalSinRecalcularEnergia()">
+                    </div>
+                    <div class="col-4 mb-3">
+                        <label for="energia" class="form-label" style="font-size: 0.85rem;">Energía (50%)</label>
+                        <input type="number" step="any" class="form-control" id="energia" value="0" oninput="calcularTotalSinRecalcularEnergia()">
+                    </div>
+                    <div class="col-4 mb-3">
+                        <label for="multas" class="form-label" style="font-size: 0.85rem;">Multas</label>
+                        <input type="number" step="any" class="form-control" id="multas" value="0" oninput="calcularTotalSinRecalcularEnergia()">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="totalPagar" class="form-label"><strong>Total a Pagar (S/)</strong></label>
+                    <input type="number" class="form-control fw-bold fs-4 text-success bg-light" id="totalPagar" readonly>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 btn-lg btn-custom">Guardar Lectura del Mes</button>
+            </form>
+        </div>
+
+        <!-- 3. Opciones de Recibo Actual -->
+        <div class="card p-3 d-none" id="seccionAcciones">
+            <h6 class="section-title mb-2">3. Recibo Actual Generado</h6>
+            <button onclick="descargarPDFDirecto(registroActual)" class="btn btn-danger w-100 mb-2 btn-custom">📄 Descargar Recibo PDF</button>
+            <button onclick="compartirPDFWhatsApp(registroActual)" class="btn btn-success w-100 btn-custom">💬 Compartir PDF por WhatsApp</button>
+        </div>
+
+        <!-- 4. Historial y Buscador de Recibos Pasados -->
+        <div class="card p-3">
+            <h6 class="section-title mb-2">4. Buscar Recibos Antiguos / Historial</h6>
+            <button onclick="cargarHistorialUsuario()" class="btn btn-outline-dark btn-sm w-100 mb-3 btn-custom">🔍 Ver Historial del Usuario Seleccionado</button>
+            
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle" style="font-size: 0.85rem;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Consumo</th>
+                            <th>Total</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaHistorial">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Seleccione un usuario para consultar recibos pasados.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL PARA EDITAR USUARIO -->
+<div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Datos del Usuario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formEditarUsuario">
+            <div class="mb-2">
+                <label class="form-label">Nombre Completo</label>
+                <input type="text" class="form-control" id="editNombre" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Dirección</label>
+                <input type="text" class="form-control" id="editDireccion">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">WhatsApp</label>
+                <input type="tel" class="form-control" id="editTelefono">
+            </div>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label">Medidor</label>
+                    <input type="text" class="form-control" id="editMedidor">
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label">Lectura Inicial (m³)</label>
+                    <input type="number" step="any" class="form-control" id="editLecturaInicial" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Actualizar Datos y Lectura Base</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARA EDITAR RECIBO DEL HISTORIAL -->
+<div class="modal fade" id="modalEditarRecibo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">✏️ Corregir Recibo Registrado</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formEditarRecibo">
+            <input type="hidden" id="editReciboId">
+            <div class="row">
+                <div class="col-6 mb-2">
+                    <label class="form-label">Lectura Anterior (m³)</label>
+                    <input type="number" step="any" class="form-control" id="editReciboAnt" required oninput="calcularEdicionRecibo()">
+                </div>
+                <div class="col-6 mb-2">
+                    <label class="form-label">Lectura Actual (m³)</label>
+                    <input type="number" step="any" class="form-control" id="editReciboAct" required oninput="calcularEdicionRecibo()">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mb-2">
+                    <label class="form-label">Consumo (m³)</label>
+                    <input type="number" step="any" class="form-control bg-light" id="editReciboConsumo" readonly>
+                </div>
+                <div class="col-6 mb-2">
+                    <label class="form-label">Tarifa por m³ (S/)</label>
+                    <input type="number" step="any" class="form-control" id="editReciboTarifa" required oninput="calcularEdicionRecibo()">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-4 mb-2">
+                    <label class="form-label" style="font-size:0.85rem">Mantenimiento</label>
+                    <input type="number" step="any" class="form-control" id="editReciboMant" value="0" oninput="calcularEdicionRecibo()">
+                </div>
+                <div class="col-4 mb-2">
+                    <label class="form-label" style="font-size:0.85rem">Energía</label>
+                    <input type="number" step="any" class="form-control" id="editReciboEnergia" value="0" oninput="calcularEdicionRecibo()">
+                </div>
+                <div class="col-4 mb-2">
+                    <label class="form-label" style="font-size:0.85rem">Multas</label>
+                    <input type="number" step="any" class="form-control" id="editReciboMultas" value="0" oninput="calcularEdicionRecibo()">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label"><strong>Total a Pagar Corregido (S/)</strong></label>
+                <input type="number" step="any" class="form-control fw-bold fs-5 text-success bg-light" id="editReciboTotal" readonly>
+            </div>
+            <button type="submit" class="btn btn-success w-100 btn-custom">Guardar Cambios del Recibo</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR CONTRASEÑA -->
+<div class="modal fade" id="modalCambiarClave" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cambiar Contraseña de Admin</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formCambiarClave">
+            <div class="mb-2">
+                <label class="form-label">Nueva Contraseña</label>
+                <input type="password" class="form-control" id="nuevaClaveInput" required>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Guardar Nueva Clave</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBfu1yO9MVyyJdbQHX2qZZAk9uGK8KwXzw",
+        authDomain: "agua-shudal.firebaseapp.com",
+        projectId: "agua-shudal",
+        storageBucket: "agua-shudal.firebasestorage.app",
+        messagingSenderId: "58075339694",
+        appId: "1:58075339694:web:596834ada8a4825bf776bf"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.db = db;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.addDoc = addDoc;
+    window.doc = doc;
+    window.updateDoc = updateDoc;
+    window.query = query;
+    window.where = where;
+
+    window.cargarUsuariosLista = async function() {
+        const select = document.getElementById("selectUsuario");
+        select.innerHTML = '<option value="">-- Seleccionar Usuario --</option>';
+        
+        try {
+            const querySnapshot = await getDocs(collection(db, "usuarios"));
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                let option = document.createElement("option");
+                option.value = docSnap.id;
+                option.text = `${data.nombre} ${data.medidor ? '(' + data.medidor + ')' : ''}`;
+                option.dataset.info = JSON.stringify(data);
+                select.appendChild(option);
+            });
+        } catch(e) {
+            console.error("Error al cargar usuarios:", e);
+        }
+    };
+
+    // Registrar usuario
+    document.getElementById("formNuevoUsuario").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const lecturaInicialNum = parseFloat(document.getElementById("nuevaLecturaInicial").value) || 0;
+
+        const nuevoUsuario = {
+            nombre: document.getElementById("nuevoNombre").value.trim(),
+            direccion: document.getElementById("nuevaDireccion").value.trim(),
+            telefono: document.getElementById("nuevoTelefono").value.trim(),
+            medidor: document.getElementById("nuevoMedidor").value.trim(),
+            fechaRegistro: new Date().toISOString()
+        };
+
+        try {
+            const userDocRef = await addDoc(collection(db, "usuarios"), nuevoUsuario);
+
+            await addDoc(collection(db, "lecturas"), {
+                usuarioId: userDocRef.id,
+                nombreUsuario: nuevoUsuario.nombre,
+                direccion: nuevoUsuario.direccion,
+                telefono: nuevoUsuario.telefono,
+                medidor: nuevoUsuario.medidor,
+                lecturaAnterior: lecturaInicialNum,
+                lecturaActual: lecturaInicialNum,
+                consumo: 0,
+                tarifa: 0,
+                subtotalAgua: 0,
+                mantenimiento: 0,
+                energia: 0,
+                multas: 0,
+                totalPagar: 0,
+                esRegistroInicial: true,
+                fecha: new Date().toISOString()
+            });
+
+            alert("✅ Usuario y Lectura Inicial guardados.");
+            document.getElementById("formNuevoUsuario").reset();
+            document.getElementById("nuevaLecturaInicial").value = "0";
+            
+            const collapseElement = document.getElementById("collapseNuevoUsuario");
+            const bsCollapse = bootstrap.Collapse.getInstance(collapseElement) || new bootstrap.Collapse(collapseElement);
+            bsCollapse.hide();
+
+            await window.cargarUsuariosLista();
+        } catch (error) {
+            console.error("Error al registrar usuario: ", error);
+            alert("Error: " + error.message);
+        }
+    });
+
+    // Editar usuario
+    document.getElementById("formEditarUsuario").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if(!usuarioSeleccionado) return;
+
+        const nuevaLecturaInicial = parseFloat(document.getElementById("editLecturaInicial").value) || 0;
+
+        const updateData = {
+            nombre: document.getElementById("editNombre").value.trim(),
+            direccion: document.getElementById("editDireccion").value.trim(),
+            telefono: document.getElementById("editTelefono").value.trim(),
+            medidor: document.getElementById("editMedidor").value.trim()
+        };
+
+        try {
+            const userRef = window.doc(window.db, "usuarios", usuarioSeleccionado.id);
+            await window.updateDoc(userRef, updateData);
+
+            const q = window.query(
+                window.collection(window.db, "lecturas"),
+                window.where("usuarioId", "==", usuarioSeleccionado.id),
+                window.where("esRegistroInicial", "==", true)
+            );
+
+            const querySnapshot = await window.getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const docInicialRef = doc(window.db, "lecturas", querySnapshot.docs[0].id);
+                await updateDoc(docInicialRef, {
+                    lecturaAnterior: nuevaLecturaInicial,
+                    lecturaActual: nuevaLecturaInicial
+                });
+            } else {
+                await addDoc(collection(window.db, "lecturas"), {
+                    usuarioId: usuarioSeleccionado.id,
+                    nombreUsuario: updateData.nombre,
+                    direccion: updateData.direccion,
+                    telefono: updateData.telefono,
+                    medidor: updateData.medidor,
+                    lecturaAnterior: nuevaLecturaInicial,
+                    lecturaActual: nuevaLecturaInicial,
+                    consumo: 0,
+                    tarifa: 0,
+                    subtotalAgua: 0,
+                    mantenimiento: 0,
+                    energia: 0,
+                    multas: 0,
+                    totalPagar: 0,
+                    esRegistroInicial: true,
+                    fecha: new Date().toISOString()
+                });
+            }
+
+            alert("✅ Datos actualizados.");
+            const modal = bootstrap.Modal.getInstance(document.getElementById("modalEditarUsuario"));
+            modal.hide();
+
+            const idGuardado = usuarioSeleccionado.id;
+            await window.cargarUsuariosLista();
+            document.getElementById("selectUsuario").value = idGuardado;
+            await window.cargarDatosUsuario();
+
+            document.getElementById("lecturaAnterior").value = nuevaLecturaInicial;
+            document.getElementById("lecturaActual").value = "";
+            window.calcularConsumo();
+        } catch (error) {
+            console.error(error);
+            alert("Error: " + error.message);
+        }
+    });
+
+    // Cargar Historial del usuario
+    window.cargarHistorialUsuario = async function() {
+        if (!usuarioSeleccionado) return;
+
+        const tbody = document.getElementById("tablaHistorial");
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">Cargando recibos...</td></tr>';
+
+        try {
+            const q = window.query(
+                window.collection(window.db, "lecturas"),
+                window.where("usuarioId", "==", usuarioSeleccionado.id)
+            );
+
+            const querySnapshot = await window.getDocs(q);
+            tbody.innerHTML = '';
+
+            let lecturas = [];
+            querySnapshot.forEach((docSnap) => {
+                let d = docSnap.data();
+                d.firebaseId = docSnap.id;
+                lecturas.push(d);
+            });
+
+            lecturas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            let hayRegistros = false;
+            let index = 0;
+
+            lecturas.forEach((data) => {
+                if(data.esRegistroInicial) return;
+
+                hayRegistros = true;
+                index++;
+                const fechaFmt = new Date(data.fecha).toLocaleDateString();
+
+                window[`reciboHistorial_${index}`] = data;
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${fechaFmt}</td>
+                    <td>${data.consumo} m³</td>
+                    <td class="fw-bold text-success">S/ ${data.totalPagar.toFixed(2)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-warning btn-sm p-1 me-1" title="Editar Recibo" onclick="abrirEditarRecibo(window.reciboHistorial_${index})">✏️</button>
+                        <button class="btn btn-danger btn-sm p-1 me-1" title="Descargar PDF" onclick="descargarPDFDirecto(window.reciboHistorial_${index})">📄</button>
+                        <button class="btn btn-success btn-sm p-1" title="WhatsApp" onclick="compartirPDFWhatsApp(window.reciboHistorial_${index})">💬</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if(!hayRegistros) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay recibos guardados anteriormente.</td></tr>';
+            }
+
+        } catch(e) {
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar el historial.</td></tr>';
+        }
+    };
+
+    // Guardar edición de un recibo histórico
+    document.getElementById("formEditarRecibo").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const firebaseId = document.getElementById("editReciboId").value;
+        if(!firebaseId) return;
+
+        const lecturaAnterior = parseFloat(document.getElementById("editReciboAnt").value) || 0;
+        const lecturaActual = parseFloat(document.getElementById("editReciboAct").value) || 0;
+        const consumo = parseFloat(document.getElementById("editReciboConsumo").value) || 0;
+        const tarifa = parseFloat(document.getElementById("editReciboTarifa").value) || 0;
+        const mantenimiento = parseFloat(document.getElementById("editReciboMant").value) || 0;
+        const energia = parseFloat(document.getElementById("editReciboEnergia").value) || 0;
+        const multas = parseFloat(document.getElementById("editReciboMultas").value) || 0;
+        const totalPagar = parseFloat(document.getElementById("editReciboTotal").value) || 0;
+
+        try {
+            const reciboRef = window.doc(window.db, "lecturas", firebaseId);
+            await window.updateDoc(reciboRef, {
+                lecturaAnterior,
+                lecturaActual,
+                consumo,
+                tarifa,
+                subtotalAgua: consumo * tarifa,
+                mantenimiento,
+                energia,
+                multas,
+                totalPagar
+            });
+
+            alert("✅ Recibo actualizado correctamente.");
+            const modal = bootstrap.Modal.getInstance(document.getElementById("modalEditarRecibo"));
+            modal.hide();
+            window.cargarHistorialUsuario();
+        } catch(err) {
+            console.error("Error al actualizar recibo:", err);
+            alert("No se pudo actualizar el recibo.");
+        }
+    });
+</script>
+
+<script>
+    let usuarioSeleccionado = null;
+    let registroActual = null;
+
+    if(!localStorage.getItem("adminUser")) localStorage.setItem("adminUser", "Admin");
+    if(!localStorage.getItem("adminPass")) localStorage.setItem("adminPass", "1234");
+
+    document.getElementById("formLogin").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const u = document.getElementById("loginUsuario").value.trim();
+        const p = document.getElementById("loginPassword").value.trim();
+
+        if(u === localStorage.getItem("adminUser") && p === localStorage.getItem("adminPass")) {
+            document.getElementById("pantallaLogin").classList.add("d-none");
+            document.getElementById("pantallaPrincipal").classList.remove("d-none");
+            window.cargarUsuariosLista();
+        } else {
+            alert("❌ Usuario o contraseña incorrectos.");
+        }
+    });
+
+    function cerrarSesion() {
+        document.getElementById("pantallaPrincipal").classList.add("d-none");
+        document.getElementById("pantallaLogin").classList.remove("d-none");
+        document.getElementById("formLogin").reset();
+    }
+
+    function abrirModalClave() {
+        const modal = new bootstrap.Modal(document.getElementById("modalCambiarClave"));
+        modal.show();
+    }
+
+    document.getElementById("formCambiarClave").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const nuevaClave = document.getElementById("nuevaClaveInput").value.trim();
+        if(nuevaClave) {
+            localStorage.setItem("adminPass", nuevaClave);
+            alert("✅ Contraseña actualizada.");
+            const modal = bootstrap.Modal.getInstance(document.getElementById("modalCambiarClave"));
+            modal.hide();
+        }
+    });
+
+    async function cargarDatosUsuario() {
+        const select = document.getElementById("selectUsuario");
+        const val = select.value;
+        if (!val) {
+            document.getElementById("infoUsuario").classList.add("d-none");
+            return;
+        }
+
+        const option = select.options[select.selectedIndex];
+        usuarioSeleccionado = JSON.parse(option.dataset.info);
+        usuarioSeleccionado.id = val;
+
+        document.getElementById("lblNombre").innerText = usuarioSeleccionado.nombre;
+        document.getElementById("lblDireccion").innerText = usuarioSeleccionado.direccion || 'N/A';
+        document.getElementById("lblTelefono").innerText = usuarioSeleccionado.telefono || 'N/A';
+        document.getElementById("lblMedidor").innerText = usuarioSeleccionado.medidor || 'N/A';
+        document.getElementById("infoUsuario").classList.remove("d-none");
+
+        try {
+            const q = window.query(
+                window.collection(window.db, "lecturas"),
+                window.where("usuarioId", "==", val)
+            );
+
+            const querySnapshot = await window.getDocs(q);
+            let lecturas = [];
+            querySnapshot.forEach((docSnap) => {
+                lecturas.push(docSnap.data());
+            });
+
+            let ultLectura = 0;
+
+            if (lecturas.length > 0) {
+                lecturas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                ultLectura = lecturas[0].lecturaActual;
+            }
+
+            document.getElementById("lecturaAnterior").value = ultLectura;
+            document.getElementById("lecturaActual").value = "";
+
+            calcularConsumo();
+            window.cargarHistorialUsuario();
+        } catch(e) {
+            console.error("Error al obtener lecturas del usuario:", e);
+            document.getElementById("lecturaAnterior").value = 0;
+            document.getElementById("lecturaActual").value = "";
+            calcularConsumo();
+        }
+    }
+
+    async function abrirModalEditarUsuario() {
+        if(!usuarioSeleccionado) return;
+        document.getElementById("editNombre").value = usuarioSeleccionado.nombre || '';
+        document.getElementById("editDireccion").value = usuarioSeleccionado.direccion || '';
+        document.getElementById("editTelefono").value = usuarioSeleccionado.telefono || '';
+        document.getElementById("editMedidor").value = usuarioSeleccionado.medidor || '';
+
+        let lecturaInicialVal = parseFloat(document.getElementById("lecturaAnterior").value) || 0;
+        try {
+            const q = window.query(
+                window.collection(window.db, "lecturas"),
+                window.where("usuarioId", "==", usuarioSeleccionado.id),
+                window.where("esRegistroInicial", "==", true)
+            );
+            const querySnapshot = await window.getDocs(q);
+            if (!querySnapshot.empty) {
+                lecturaInicialVal = querySnapshot.docs[0].data().lecturaActual;
+            }
+        } catch(e) {
+            console.error(e);
+        }
+
+        document.getElementById("editLecturaInicial").value = lecturaInicialVal;
+        const modal = new bootstrap.Modal(document.getElementById("modalEditarUsuario"));
+        modal.show();
+    }
+
+    function abrirEditarRecibo(datos) {
+        document.getElementById("editReciboId").value = datos.firebaseId;
+        document.getElementById("editReciboAnt").value = datos.lecturaAnterior;
+        document.getElementById("editReciboAct").value = datos.lecturaActual;
+        document.getElementById("editReciboTarifa").value = datos.tarifa || 3.00;
+        document.getElementById("editReciboMant").value = datos.mantenimiento || 0;
+        document.getElementById("editReciboEnergia").value = datos.energia || 0;
+        document.getElementById("editReciboMultas").value = datos.multas || 0;
+
+        calcularEdicionRecibo();
+        const modal = new bootstrap.Modal(document.getElementById("modalEditarRecibo"));
+        modal.show();
+    }
+
+    function calcularEdicionRecibo() {
+        const anterior = parseFloat(document.getElementById("editReciboAnt").value) || 0;
+        const actual = parseFloat(document.getElementById("editReciboAct").value) || 0;
+        const tarifa = parseFloat(document.getElementById("editReciboTarifa").value) || 0;
+
+        const consumo = (actual >= anterior) ? (actual - anterior) : 0;
+        document.getElementById("editReciboConsumo").value = consumo.toFixed(2);
+
+        const subtotalAgua = consumo * tarifa;
+        const mantenimiento = parseFloat(document.getElementById("editReciboMant").value) || 0;
+        const energia = parseFloat(document.getElementById("editReciboEnergia").value) || 0;
+        const multas = parseFloat(document.getElementById("editReciboMultas").value) || 0;
+
+        const total = subtotalAgua + mantenimiento + energia + multas;
+        document.getElementById("editReciboTotal").value = total.toFixed(2);
+    }
+
+    function calcularConsumo() {
+        const anterior = parseFloat(document.getElementById("lecturaAnterior").value) || 0;
+        const actualInput = document.getElementById("lecturaActual").value;
+        const actual = parseFloat(actualInput) || 0;
+        const tarifa = parseFloat(document.getElementById("precioMetro").value) || 0;
+
+        const consumo = (actualInput !== "" && actual >= anterior) ? (actual - anterior) : 0;
+        const subtotalAgua = consumo * tarifa;
+
+        const energia = subtotalAgua * 0.50;
+        document.getElementById("energia").value = energia.toFixed(2);
+        document.getElementById("consumoTotal").value = consumo.toFixed(2);
+        
+        calcularTotalSinRecalcularEnergia();
+    }
+
+    function calcularTotalSinRecalcularEnergia() {
+        const consumo = parseFloat(document.getElementById("consumoTotal").value) || 0;
+        const tarifa = parseFloat(document.getElementById("precioMetro").value) || 0;
+        const subtotalAgua = consumo * tarifa;
+
+        const mantenimiento = parseFloat(document.getElementById("mantenimiento").value) || 0;
+        const energia = parseFloat(document.getElementById("energia").value) || 0;
+        const multas = parseFloat(document.getElementById("multas").value) || 0;
+
+        const total = subtotalAgua + mantenimiento + energia + multas;
+        document.getElementById("totalPagar").value = total.toFixed(2);
+    }
+
+    document.getElementById("formLectura").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!usuarioSeleccionado) {
+            alert("Por favor seleccione un usuario.");
+            return;
+        }
+
+        const lecturaAnterior = parseFloat(document.getElementById("lecturaAnterior").value);
+        const lecturaActual = parseFloat(document.getElementById("lecturaActual").value);
+
+        if(isNaN(lecturaActual)) {
+            alert("Por favor ingrese la Lectura Actual.");
+            return;
+        }
+
+        if(lecturaActual < lecturaAnterior) {
+            alert("La Lectura Actual no puede ser menor a la Lectura Anterior.");
+            return;
+        }
+
+        const consumo = parseFloat(document.getElementById("consumoTotal").value);
+        const tarifa = parseFloat(document.getElementById("precioMetro").value);
+        const mantenimiento = parseFloat(document.getElementById("mantenimiento").value) || 0;
+        const energia = parseFloat(document.getElementById("energia").value) || 0;
+        const multas = parseFloat(document.getElementById("multas").value) || 0;
+        const totalPagar = parseFloat(document.getElementById("totalPagar").value);
+
+        registroActual = {
+            usuarioId: usuarioSeleccionado.id,
+            nombreUsuario: usuarioSeleccionado.nombre,
+            direccion: usuarioSeleccionado.direccion || 'N/A',
+            telefono: usuarioSeleccionado.telefono || '',
+            medidor: usuarioSeleccionado.medidor || 'N/A',
+            lecturaAnterior,
+            lecturaActual,
+            consumo,
+            tarifa,
+            subtotalAgua: consumo * tarifa,
+            mantenimiento,
+            energia,
+            multas,
+            totalPagar,
+            fecha: new Date().toISOString()
+        };
+
+        try {
+            await window.addDoc(window.collection(window.db, "lecturas"), registroActual);
+            alert("✅ Lectura registrada y recibo guardado.");
+            document.getElementById("seccionAcciones").classList.remove("d-none");
+            
+            document.getElementById("lecturaAnterior").value = lecturaActual;
+            document.getElementById("lecturaActual").value = "";
+            calcularConsumo();
+            window.cargarHistorialUsuario();
+        } catch (error) {
+            console.error("Error: ", error);
+            alert("Error al guardar: " + error.message);
+        }
+    });
+
+    function limpiarNombreArchivo(nombre) {
+        if (!nombre) return "Recibo_Agua";
+        return nombre
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9_-]/g, "_")
+            .replace(/_+/g, "_")
+            .replace(/^_+|_+$/g, "");
+    }
+
+    function crearDocumentoPDF(datos) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: "portrait",
+            unit: "mm",
+            format: "a4"
+        });
+
+        doc.setFillColor(13, 110, 253);
+        doc.rect(0, 0, 210, 32, "F");
+
+        doc.setFillColor(255, 255, 255);
+        doc.circle(20, 16, 5, "F");
+        doc.triangle(15, 15, 25, 15, 20, 7, "F");
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.text("AGUA SHUDAL", 29, 18);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("RECIBO OFICIAL DE CONSUMO", 29, 25);
+
+        const fechaFmt = new Date(datos.fecha).toLocaleDateString("es-ES", {
+            day: '2-digit', month: '2-digit', year: 'numeric'
+        });
+        doc.text(`Fecha: ${fechaFmt}`, 196, 20, { align: "right" });
+
+        doc.setDrawColor(220, 224, 230);
+        doc.setFillColor(248, 249, 250);
+        doc.roundedRect(14, 38, 182, 32, 3, 3, "FD");
+
+        doc.setTextColor(33, 37, 41);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("INFORMACIÓN DEL USUARIO", 18, 45);
+
+        doc.setFont("helvetica", "normal");
+        doc.text(`Cliente: ${datos.nombreUsuario}`, 18, 52);
+        doc.text(`Dirección: ${datos.direccion || 'N/A'}`, 18, 58);
+        doc.text(`Teléfono: ${datos.telefono || 'N/A'}`, 18, 64);
+        doc.text(`N° Medidor: ${datos.medidor || 'N/A'}`, 120, 52);
+
+        doc.autoTable({
+            startY: 76,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [33, 37, 41],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 10
+            },
+            bodyStyles: {
+                fontSize: 9,
+                textColor: [33, 37, 41]
+            },
+            columnStyles: {
+                0: { cellWidth: 120 },
+                1: { halign: 'right', fontStyle: 'bold' }
+            },
+            head: [['Concepto / Descripción del Servicio', 'Monto / Valor']],
+            body: [
+                ['Lectura Anterior', `${datos.lecturaAnterior} m³`],
+                ['Lectura Actual', `${datos.lecturaActual} m³`],
+                ['Consumo del Mes', `${datos.consumo} m³`],
+                [`Subtotal Consumo (S/ ${(datos.tarifa || 0).toFixed(2)} por m³)`, `S/ ${(datos.subtotalAgua || 0).toFixed(2)}`],
+                ['Energía Eléctrica (50%)', `S/ ${(datos.energia || 0).toFixed(2)}`],
+                ['Mantenimiento de Red', `S/ ${(datos.mantenimiento || 0).toFixed(2)}`],
+                ['Multas / Recargos Adicionales', `S/ ${(datos.multas || 0).toFixed(2)}`]
+            ]
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 8;
+        doc.setFillColor(231, 241, 255);
+        doc.setDrawColor(13, 110, 253);
+        doc.roundedRect(114, finalY, 82, 20, 3, 3, "FD");
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(13, 110, 253);
+        doc.text("TOTAL A PAGAR:", 120, finalY + 12);
+        doc.setFontSize(14);
+        doc.text(`S/ ${(datos.totalPagar || 0).toFixed(2)}`, 190, finalY + 12, { align: "right" });
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(108, 117, 125);
+        doc.text("Gracias por mantener al día el pago de su servicio de agua.", 105, 280, { align: "center" });
+
+        return doc;
+    }
+
+    function descargarPDFDirecto(datos) {
+        if (!datos) return;
+        const doc = crearDocumentoPDF(datos);
+        const nombreLimpio = limpiarNombreArchivo(datos.nombreUsuario);
+        doc.save(`Recibo_${nombreLimpio}.pdf`);
+    }
+
+    async function compartirPDFWhatsApp(datos) {
+        if (!datos) return;
+
+        const doc = crearDocumentoPDF(datos);
+        const nombreLimpio = limpiarNombreArchivo(datos.nombreUsuario);
+        const fileName = `Recibo_${nombreLimpio}.pdf`;
+        const pdfBlob = doc.output('blob');
+        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+        const mensajeTexto = `Hola ${datos.nombreUsuario}, le adjuntamos su recibo oficial de agua en formato PDF. Total a pagar: S/ ${(datos.totalPagar || 0).toFixed(2)}`;
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Recibo de Agua Shudal',
+                    text: mensajeTexto
+                });
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error("Error al compartir archivo:", error);
+                    alert("No se pudo enviar el archivo directamente.");
+                }
+            }
+        } else {
+            doc.save(fileName);
+            alert("📄 El PDF del recibo se ha descargado en tu equipo.\n\nA continuación se abrirá WhatsApp para que adjuntes el archivo descargado.");
+
+            const url = `https://wa.me/${datos.telefono}?text=${encodeURIComponent(mensajeTexto)}`;
+            window.open(url, '_blank');
+        }
+    }
+</script>
+
+</body>
+</html>
