@@ -87,7 +87,7 @@
             </div>
         </div>
 
-        <!-- 1. Selección y Edición de Usuario -->
+        <!-- 1. Selección, Edición y Eliminación de Usuario -->
         <div class="card p-3">
             <h6 class="section-title mb-2">1. Seleccionar Usuario</h6>
             <div class="mb-2">
@@ -103,7 +103,10 @@
                         <p class="mb-1"><strong>WhatsApp:</strong> <span id="lblTelefono"></span></p>
                         <p class="mb-0"><strong>Medidor:</strong> <span id="lblMedidor"></span></p>
                     </div>
-                    <button class="btn btn-warning btn-sm btn-custom" onclick="abrirModalEditarUsuario()">✏️ Editar</button>
+                    <div>
+                        <button class="btn btn-warning btn-sm btn-custom me-1 mb-1" onclick="abrirModalEditarUsuario()">✏️ Editar</button>
+                        <button class="btn btn-outline-danger btn-sm btn-custom mb-1" onclick="eliminarUsuarioSeleccionado()">🗑️ Eliminar</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -316,7 +319,7 @@
 <!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBfu1yO9MVyyJdbQHX2qZZAk9uGK8KwXzw",
@@ -336,6 +339,7 @@
     window.addDoc = addDoc;
     window.doc = doc;
     window.updateDoc = updateDoc;
+    window.deleteDoc = deleteDoc;
     window.query = query;
     window.where = where;
 
@@ -478,6 +482,45 @@
             alert("Error: " + error.message);
         }
     });
+
+    // Eliminar Usuario y sus lecturas asociadas
+    window.eliminarUsuarioSeleccionado = async function() {
+        if(!usuarioSeleccionado) return;
+
+        const confirmar = confirm(`⚠️ ¿Estás seguro de eliminar al usuario "${usuarioSeleccionado.nombre}"?\n\nEsta acción borrará también todo su historial de recibos y lecturas permanentemente.`);
+        if(!confirmar) return;
+
+        try {
+            // 1. Eliminar todas las lecturas asociadas a este usuario
+            const q = window.query(
+                window.collection(window.db, "lecturas"),
+                window.where("usuarioId", "==", usuarioSeleccionado.id)
+            );
+            const querySnapshot = await window.getDocs(q);
+            
+            const promesasBorrado = [];
+            querySnapshot.forEach((docSnap) => {
+                promesasBorrado.push(window.deleteDoc(window.doc(window.db, "lecturas", docSnap.id)));
+            });
+            await Promise.all(promesasBorrado);
+
+            // 2. Eliminar el documento del usuario
+            await window.deleteDoc(window.doc(window.db, "usuarios", usuarioSeleccionado.id));
+
+            alert("🗑️ Usuario e historial eliminados correctamente.");
+            
+            // Limpiar interfaz
+            usuarioSeleccionado = null;
+            document.getElementById("infoUsuario").classList.add("d-none");
+            document.getElementById("tablaHistorial").innerHTML = '<tr><td colspan="4" class="text-center text-muted">Seleccione un usuario para consultar recibos pasados.</td></tr>';
+            document.getElementById("seccionAcciones").classList.add("d-none");
+            
+            await window.cargarUsuariosLista();
+        } catch (error) {
+            console.error("Error al eliminar usuario:", error);
+            alert("Hubo un error al intentar eliminar al usuario.");
+        }
+    };
 
     // Cargar Historial del usuario
     window.cargarHistorialUsuario = async function() {
